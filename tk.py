@@ -22,8 +22,6 @@ setting = {
 }
 
 
-
-
 class App(Tk):
     # __init__ function for class App
     def __init__(self, *args, **kwargs):
@@ -70,11 +68,6 @@ class App(Tk):
                                             title="Select spectral file",
                                             filetypes=(
                                                 ("Spectral file", "*.hdr"),
-                                                # ("Spectral file", "*.img"),
-                                                # ("Spectral file", "*.dat"),
-                                                # ("Spectral file", "*.sli"),
-                                                # ("Spectral file", "*.hyspex"),
-                                                # ("Spectral file", "*.raw"),
                                                 ))
         entryBox.delete(0, END)
         entryBox.insert(END, filename)
@@ -84,11 +77,8 @@ class App(Tk):
         img_width = hdr['samples']
         img_height = hdr['lines']
         aspect_ratio = img_width/img_height
-        
-        _min = np.amin(array)
-        _max = np.amax(array)
-        disp_norm = (array - _min) * 255.0 / (_max - _min)
-        disp_norm = np.uint8(disp_norm)
+
+        disp_norm = np.uint8(array)
 
         image = Image.fromarray(disp_norm)
 
@@ -107,9 +97,6 @@ class App(Tk):
         img_height = hdr['lines']
         aspect_ratio = img_width/img_height
 
-
-        array = array*255
-        array = array.astype(int)
         array = np.uint8(array)
 
         image = Image.fromarray(array, 'RGB')
@@ -387,9 +374,6 @@ class Page3(Frame):
 
         self.return_btn = Button(self, text ="Home", command = lambda : controller.show_frame(StartPage), width=7)
         self.return_btn.place(anchor=CENTER, relx=0.1, y=50)
-        # self.return_btn.pack(side=LEFT)
-        # print(self.filename)
-
 
         self.filename = ""
         self.original_image = None
@@ -407,7 +391,6 @@ class Page3(Frame):
         
 
         self.operation = []
-        # self.draw_list = []
 
 
         self.editbar = EditBar(master=self)
@@ -518,8 +501,6 @@ class Page9(Frame):
 
 
 
-# Driver Code
-app = App()
 
-# Start the mainloop
-app.mainloop()
+app = App()    # Driver Code
+app.mainloop()    # Start the mainloop

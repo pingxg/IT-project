@@ -47,9 +47,6 @@ class EditBar(Frame):
             
             self.master.is_spectral = False
             self.master.operation = []
-            # self.draw_button["state"] = NORMAL
-
-
 
             filename = filedialog.askopenfilename(
                 initialdir=os.getcwd(),
@@ -76,6 +73,8 @@ class EditBar(Frame):
                     self.adjust_button.destroy()
                     self.filter_button.destroy()
                     self.draw_button.destroy()
+                    self.apply_to_all_and_save_button.destroy()
+                    self.update_button.destroy()
 
                 except:
                     pass
@@ -114,6 +113,8 @@ class EditBar(Frame):
                     self.adjust_button.destroy()
                     self.filter_button.destroy()
                     self.draw_button.destroy()
+                    self.apply_to_all_and_save_button.destroy()
+                    self.update_button.destroy()
 
                 except:
                     pass
@@ -277,7 +278,7 @@ class EditBar(Frame):
                     end_x = current_operation[1]
                     start_y = current_operation[2]
                     end_y = current_operation[3]
-                    data = read_subcube(filename=filename, hdr=hdr, row_min=start_y, row_max=end_y, col_min=start_x, col_max=end_x)
+                    data = read_subcube(filename=filename, oringinal_data=data, hdr=hdr, row_min=start_y, row_max=end_y, col_min=start_x, col_max=end_x)
             
             # output_array = np.asarray(output_array)
             # output_array = output_array.reshape((end_x-start_x, end_y-start_y, int(hdr['bands'])))

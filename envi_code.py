@@ -11,7 +11,7 @@ from PIL import Image
 from spectral.io.envi import save_image
 
 
-FILE_EXTS = ['img', 'dat', 'sli', 'hyspex', 'raw']
+FILE_EXTS = ['img', 'dat', 'sli', 'hyspex', 'raw']  # Define spectral file extentions
 
 dtype_map = [
     ('1', np.uint8),                   # unsigned byte
@@ -27,8 +27,8 @@ dtype_map = [
     ('15', np.uint64),                 # 64-bit unsigned int
     ]
 
-envi_to_dtype = dict((k, np.dtype(v)) for (k, v) in dtype_map)
-dtype_to_envi = dict(tuple(reversed(item)) for item in list(envi_to_dtype.items()))
+envi_to_dtype = dict((k, np.dtype(v)) for (k, v) in dtype_map)  # convert to dict
+dtype_to_envi = dict(tuple(reversed(item)) for item in list(envi_to_dtype.items())) # reverse conversion
 
 def read_hdr(file):
     """
@@ -49,6 +49,7 @@ def read_hdr(file):
     with open(hdr_path, 'r') as f:
         lines = f.readlines()
 
+    # loop through hdr file and add information to a dict
     while lines:
         line = lines.pop(0).lower()
         if line.find('=') == -1: continue
@@ -71,10 +72,11 @@ def read_hdr(file):
                 HEADER[key] = vals
         else:
             HEADER[key] = val
-
+    
+    # datatype conversion
     try:
-        HEADER['lines'] = int(HEADER['lines']) # nrows
-        HEADER['samples'] = int(HEADER['samples']) # ncols
+        HEADER['lines'] = int(HEADER['lines'])      # nrows
+        HEADER['samples'] = int(HEADER['samples'])  # ncols
         HEADER['bands'] = int(HEADER['bands'])
         HEADER['wavelength'] = [float(i) for i in HEADER['wavelength']]
         HEADER['fwhm'] = [float(i) for i in HEADER['fwhm']]
@@ -86,12 +88,12 @@ def read_hdr(file):
     return HEADER
 
 
-def envi_opener(filename, normalize=False):
+def envi_opener(filename, normalize=True):
     """
     input: file path to hdr file or raw file, these two files must have same filename and under the same folder
     output: the spectral data which is a 3D numpy array
     """
-    f_name, f_ext = os.path.splitext(filename)
+    f_name, _ = os.path.splitext(filename)
 
     hdr_path = filename
     if os.path.isfile(f_name+".hdr"):
@@ -117,41 +119,44 @@ def envi_opener(filename, normalize=False):
     interleave = hdr["interleave"]
     
     try:
+        # get the max value of current datatype
         divisor = np.iinfo(envi_to_dtype[hdr['data type']]).max
+
         # Exceptions: Some sensors save 16-bit data, but only store 12-bit values.
         if hdr['sensor type'] == 'specim iq' and hdr['data type'] == '12':
             # This device has a 12-bit sensor, so the 16-bit divisor is too much
             divisor = 4095
     except:
         divisor = 0
-    hdr['scale_factor'] = divisor
-    # hdr['scale_factor'] = 1
+    hdr['scale_factor'] = divisor   # add to the hdr dict
 
-
+    # read file using numpy memory map, and reshape the data based on the interleave
     if interleave == 'bil':
         data = np.memmap(data_path, dtype=envi_to_dtype[hdr['data type']], mode='r+', shape=(R, B, C))
     elif interleave == 'bip':
         data = np.memmap(data_path, dtype=envi_to_dtype[hdr['data type']], mode='r+', shape=(R, C, B))
     elif interleave == 'bsq':
         data = np.memmap(data_path, dtype=envi_to_dtype[hdr['data type']], mode='r+', shape=(B, R, C))
-    
+
+    # scale data based on the camera
     if normalize and hdr['scale_factor'] != 0 and hdr['scale_factor'] != 1:
         data = data/float(hdr['scale_factor'])
         hdr['scale_factor'] = 1
+
     return data, hdr
 
 def tiff_opener(filename):
     image = None
     _, f_ext = os.path.splitext(filename)
-    # print(f_ext)
     if f_ext in [".tiff", ".tif", ".TIFF", ".TIF"]:
         image = plt.imread(filename)
     return image
 
-def read_band(filename, band=0, normalize=True, save=False):
+def read_band(filename, band=0, save=False):
     output = None
     data, hdr = envi_opener(filename)
-    # print(hdr)
+
+
     if hdr['interleave'] == 'bil':
         output = np.array(data[:, band, :])
     elif hdr['interleave'] == 'bip':
@@ -159,19 +164,16 @@ def read_band(filename, band=0, normalize=True, save=False):
     elif hdr['interleave'] == 'bsq':
         output = np.array(data[band, :, :])
     
-    if normalize and hdr['scale_factor'] != 0 and hdr['scale_factor'] != 1:
-        output = output/float(hdr['scale_factor'])
-        hdr['scale_factor'] = 1
     if save:
         f_name, _ = os.path.splitext(filename)
         plt.imsave(f_name + f"_grayscale_{band}" +'.png', output, cmap="gray", dpi=500, format="png")
 
+    # scale the data to 0-255
     output = ((output-np.min(output))*255/(np.max(output)-np.min(output)))
     
-    # print(output)
     return output
 
-def read_bands(filename, band_min=0, band_max=None, normalize=True):
+def read_bands(filename, band_min=0, band_max=None):
     output = None
     data, hdr = envi_opener(filename)
     if band_max is None:
@@ -185,12 +187,9 @@ def read_bands(filename, band_min=0, band_max=None, normalize=True):
     elif hdr['interleave'] == 'bsq':
         output = np.array(data[band_min:band_max, :, :])
         output = output.transpose((1, 2, 0))
-    if normalize and hdr['scale_factor'] != 0 and hdr['scale_factor'] != 1:
-        output = output/float(hdr['scale_factor'])
-        hdr['scale_factor'] = 1
     return output
 
-def read_pixel(filename, row=0, col=0, normalize=True, save=False):
+def read_pixel(filename, row=0, col=0, save=False):
     output = None
     data, hdr = envi_opener(filename)
     if hdr['interleave'] == 'bil':
@@ -199,16 +198,14 @@ def read_pixel(filename, row=0, col=0, normalize=True, save=False):
         output = np.array(data[row, col, :])
     elif hdr['interleave'] == 'bsq':
         output = np.array(data[:, row, col])
-    if normalize and hdr['scale_factor'] != 0 and hdr['scale_factor'] != 1:
-        output = output/float(hdr['scale_factor'])
-        hdr['scale_factor'] = 1
+
     if save:
         f_name, _ = os.path.splitext(filename)
         plt.plot(output)
         plt.savefig(f_name + f"_pixel_({row},{col})" +'.png', bbox_inches='tight',transparent=False, pad_inches=0)
     return output
 
-def read_subcube(filename=None, oringinal_data=None, hdr=None, row_min=0, row_max=None, col_min=0, col_max=None, band_min=None, band_max=None, normalize=False, save=False):
+def read_subcube(filename=None, oringinal_data=None, hdr=None, row_min=0, row_max=None, col_min=0, col_max=None, band_min=None, band_max=None, save=False):
     output = None
 
     if row_max is None:
@@ -224,7 +221,6 @@ def read_subcube(filename=None, oringinal_data=None, hdr=None, row_min=0, row_ma
                 output = np.array(data[row_min:row_max, col_min:col_max, band_min:band_max])
     else:
         data, _ = envi_opener(filename)
-
         if band_min == None and band_max == None:
             if hdr['interleave'] == 'bil':
                 output = np.array(data[row_min:row_max, :, col_min:col_max])
@@ -232,25 +228,19 @@ def read_subcube(filename=None, oringinal_data=None, hdr=None, row_min=0, row_ma
             elif hdr['interleave'] == 'bip':
                 output = np.array(data[row_min:row_max, col_min:col_max, :])
             elif hdr['interleave'] == 'bsq':
-
                 output = output.transpose((1, 2, 0))
                 output = np.array(data[:, row_min:row_max, col_min:col_max])
         elif band_min != None and band_max != None:
             if hdr['interleave'] == 'bil':
                 output = np.array(data[row_min:row_max, band_min:band_max, col_min:col_max])
-
                 output = output.transpose((0, 2, 1))
             elif hdr['interleave'] == 'bip':
                 output = np.array(data[row_min:row_max, col_min:col_max, band_min:band_max])
             elif hdr['interleave'] == 'bsq':
                 output = np.array(data[band_min:band_max, row_min:row_max, col_min:col_max])
-
                 output = output.transpose((1, 2, 0))
         else:
             print("Please specify the band range!")
-        
-    if normalize and hdr['scale_factor'] != 0 and hdr['scale_factor'] != 1:
-        output = output/float(hdr['scale_factor'])
 
     f_name, _ = os.path.splitext(filename)
     if save == True:
@@ -288,23 +278,24 @@ def read_rgb(filename, red=None, green=None, blue=None, save=False):
         rgb[:,:,0] = r_band/np.max(r_band)
         rgb[:,:,1] = g_band/np.max(g_band)
         rgb[:,:,2] = b_band/np.max(b_band)
+        rgb = rgb*255
+        rgb = rgb.astype(int)
     except:
         pass
+
     if save:
         f_name, _ = os.path.splitext(filename)
         plt.imsave(f_name + f"_rgb_({red},{green},{blue})" +'.png', rgb, dpi=500, format="png")
     return rgb
 
 
-
-
-def read_reflectance(filename, row=0, col=0, normalize=True, white_corr=True, save=False):
+def read_reflectance(filename, row=0, col=0, white_corr=True, save=False):
     output = None
-    data = read_pixel(filename, row=row, col=col, normalize=normalize, save=False)
+    data = read_pixel(filename, row=row, col=col, save=False)
     print(data.shape)
     if white_corr:
         white_ref_path = os.path.join(os.path.split(filename)[0], f'WHITEREF_{os.path.split(filename)[-1]}')
-        white_ref = read_subcube(white_ref_path, normalize=normalize, save=False)
+        white_ref = read_subcube(white_ref_path, save=False)
         white_slice = white_ref[:, col, :].ravel()
         output = data/white_slice.max(axis=0, keepdims=True)
     if save:
