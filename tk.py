@@ -14,7 +14,7 @@ setting = {
     'menu_title_font': ("Verdana", 35),
     'page_title_font': ("Verdana", 20),
     'page_title_rely': 0.02,
-    'menu_btn_width': 21, # or set any value larger than 20
+    'menu_btn_width': 21,   # or set any value larger than 20
     'menu_btn_height': None,
     'menu_btn_font': None,
     'canvas_preview':(1100,780),
@@ -32,7 +32,7 @@ class App(Tk):
 
         self.state('zoomed')
         self.title("ENVI Editor")
-        self.geometry(f"1680x997")
+        self.geometry("1680x997")
         self.minsize(750,400)
         self.resizable(True, True)
 
@@ -211,7 +211,7 @@ class Page1(Frame):
             canvas_width = setting['canvas_preview'][0]
             canvas_height = setting['canvas_preview'][1]
 
-            array = read_band(filename, band=0, normalize=True, save=False)
+            array = read_band(filename, band=0, save=False)
             hdr = read_hdr(filename)
 
             fitted_array = controller.fit_gray_to_canvas(canvas_width, canvas_height, array, filename)
@@ -231,7 +231,7 @@ class Page1(Frame):
 
             def update_image(scale):
                 band = int(float(scale.get()))
-                new_array = read_band(filename, band=band, normalize=True, save=False)
+                new_array = read_band(filename, band=band, save=False)
 
                 new_fitted_array = controller.fit_gray_to_canvas(canvas_width, canvas_height, new_array, filename)
 
@@ -246,7 +246,7 @@ class Page1(Frame):
 
             def save_image():
                 band = int(float(scale_g.get()))
-                read_band(filename, band=band, normalize=True, save=True)
+                read_band(filename, band=band, save=True)
 
             scale_g = CustomScale(self, from_=0, to=hdr['bands']-1, length=1000)
             scale_g.place(anchor=CENTER, relx=0.5, rely=0.96)

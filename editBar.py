@@ -3,6 +3,7 @@ from datetime import datetime
 from tkinter import Frame, Button, Label, filedialog, CENTER, LEFT, NORMAL, DISABLED
 
 import cv2
+import numpy
 
 from filterFrame import FilterFrame
 from adjustFrame import AdjustFrame
@@ -262,7 +263,7 @@ class EditBar(Frame):
             # data, hdr = envi_opener(filename)
             # data = read_bands(filename)
             data = read_subcube(filename=filename, hdr=hdr)
-
+            # output = np.ampty()
             print(data.shape)
             # for i in range(int(hdr['bands'])):
 
@@ -279,7 +280,9 @@ class EditBar(Frame):
                     start_y = current_operation[2]
                     end_y = current_operation[3]
                     data = read_subcube(filename=filename, oringinal_data=data, hdr=hdr, row_min=start_y, row_max=end_y, col_min=start_x, col_max=end_x)
-            
+            # output = np.am
+            for i in range(data.shape[2]):
+                _min
             # output_array = np.asarray(output_array)
             # output_array = output_array.reshape((end_x-start_x, end_y-start_y, int(hdr['bands'])))
             f_name, _ = os.path.splitext(filename)

@@ -88,7 +88,7 @@ def read_hdr(file):
     return HEADER
 
 
-def envi_opener(filename, normalize=True):
+def envi_opener(filename):
     """
     input: file path to hdr file or raw file, these two files must have same filename and under the same folder
     output: the spectral data which is a 3D numpy array
@@ -138,11 +138,6 @@ def envi_opener(filename, normalize=True):
     elif interleave == 'bsq':
         data = np.memmap(data_path, dtype=envi_to_dtype[hdr['data type']], mode='r+', shape=(B, R, C))
 
-    # scale data based on the camera
-    if normalize and hdr['scale_factor'] != 0 and hdr['scale_factor'] != 1:
-        data = data/float(hdr['scale_factor'])
-        hdr['scale_factor'] = 1
-
     return data, hdr
 
 def tiff_opener(filename):
@@ -168,26 +163,31 @@ def read_band(filename, band=0, save=False):
         f_name, _ = os.path.splitext(filename)
         plt.imsave(f_name + f"_grayscale_{band}" +'.png', output, cmap="gray", dpi=500, format="png")
 
+    # scale data based on the camera type
+    if hdr['scale_factor'] != 0 and hdr['scale_factor'] != 1:
+        output = output/float(hdr['scale_factor'])
+        hdr['scale_factor'] = 1
+    
     # scale the data to 0-255
     output = ((output-np.min(output))*255/(np.max(output)-np.min(output)))
     
     return output
 
-def read_bands(filename, band_min=0, band_max=None):
-    output = None
-    data, hdr = envi_opener(filename)
-    if band_max is None:
-        band_max = hdr['bands']
+# def read_bands(filename, band_min=0, band_max=None):
+#     output = None
+#     data, hdr = envi_opener(filename)
+#     if band_max is None:
+#         band_max = hdr['bands']
     
-    if hdr['interleave'] == 'bil':
-        output = np.array(data[:, band_min:band_max, :])
-        output = output.transpose((0, 2, 1))
-    elif hdr['interleave'] == 'bip':
-        output = np.array(data[:, :, band_min:band_max])
-    elif hdr['interleave'] == 'bsq':
-        output = np.array(data[band_min:band_max, :, :])
-        output = output.transpose((1, 2, 0))
-    return output
+#     if hdr['interleave'] == 'bil':
+#         output = np.array(data[:, band_min:band_max, :])
+#         output = output.transpose((0, 2, 1))
+#     elif hdr['interleave'] == 'bip':
+#         output = np.array(data[:, :, band_min:band_max])
+#     elif hdr['interleave'] == 'bsq':
+#         output = np.array(data[band_min:band_max, :, :])
+#         output = output.transpose((1, 2, 0))
+#     return output
 
 def read_pixel(filename, row=0, col=0, save=False):
     output = None
@@ -205,7 +205,7 @@ def read_pixel(filename, row=0, col=0, save=False):
         plt.savefig(f_name + f"_pixel_({row},{col})" +'.png', bbox_inches='tight',transparent=False, pad_inches=0)
     return output
 
-def read_subcube(filename=None, oringinal_data=None, hdr=None, row_min=0, row_max=None, col_min=0, col_max=None, band_min=None, band_max=None, save=False):
+def read_subcube(filename=None, oringinal_data=None, hdr=None, row_min=0, row_max=None, col_min=0, col_max=None, save=False):
     output = None
 
     if row_max is None:
@@ -215,36 +215,40 @@ def read_subcube(filename=None, oringinal_data=None, hdr=None, row_min=0, row_ma
 
     if isinstance(oringinal_data, np.ndarray):
         data = oringinal_data
-        if band_min == None and band_max == None:
-                output = np.array(data[row_min:row_max, col_min:col_max, :])
-        elif band_min != None and band_max != None:
-                output = np.array(data[row_min:row_max, col_min:col_max, band_min:band_max])
+        # if band_min == None and band_max == None:
+        output = np.array(data[row_min:row_max, col_min:col_max, :])
+        # elif band_min != None and band_max != None:
+                # output = np.array(data[row_min:row_max, col_min:col_max, band_min:band_max])
     else:
         data, _ = envi_opener(filename)
-        if band_min == None and band_max == None:
-            if hdr['interleave'] == 'bil':
-                output = np.array(data[row_min:row_max, :, col_min:col_max])
-                output = output.transpose((0, 2, 1))
-            elif hdr['interleave'] == 'bip':
-                output = np.array(data[row_min:row_max, col_min:col_max, :])
-            elif hdr['interleave'] == 'bsq':
-                output = output.transpose((1, 2, 0))
-                output = np.array(data[:, row_min:row_max, col_min:col_max])
-        elif band_min != None and band_max != None:
-            if hdr['interleave'] == 'bil':
-                output = np.array(data[row_min:row_max, band_min:band_max, col_min:col_max])
-                output = output.transpose((0, 2, 1))
-            elif hdr['interleave'] == 'bip':
-                output = np.array(data[row_min:row_max, col_min:col_max, band_min:band_max])
-            elif hdr['interleave'] == 'bsq':
-                output = np.array(data[band_min:band_max, row_min:row_max, col_min:col_max])
-                output = output.transpose((1, 2, 0))
-        else:
-            print("Please specify the band range!")
+        # if band_min == None and band_max == None:
+        if hdr['interleave'] == 'bil':
+            output = np.array(data[row_min:row_max, :, col_min:col_max])
+            output = output.transpose((0, 2, 1))
 
+        elif hdr['interleave'] == 'bip':
+            output = np.array(data[row_min:row_max, col_min:col_max, :])
+        elif hdr['interleave'] == 'bsq':
+            output = output.transpose((1, 2, 0))
+            output = np.array(data[:, row_min:row_max, col_min:col_max])
+        # elif band_min != None and band_max != None:
+            # if hdr['interleave'] == 'bil':
+            #     output = np.array(data[row_min:row_max, band_min:band_max, col_min:col_max])
+            #     output = output.transpose((0, 2, 1))
+            # elif hdr['interleave'] == 'bip':
+            #     output = np.array(data[row_min:row_max, col_min:col_max, band_min:band_max])
+            # elif hdr['interleave'] == 'bsq':
+            #     output = np.array(data[band_min:band_max, row_min:row_max, col_min:col_max])
+            #     output = output.transpose((1, 2, 0))
+        # else:
+        #     print("Please specify the band range!")
+    # if hdr['scale_factor'] != 0 and hdr['scale_factor'] != 1:
+    #     output = output/float(hdr['scale_factor'])
+    #     hdr['scale_factor'] = 1
+    
     f_name, _ = os.path.splitext(filename)
     if save == True:
-        save_image(f_name + f"_envi_({row_min}_{row_max},{col_min}_{col_max},{band_min}_{band_max})" +'.hdr', output, force=True, ext="raw")
+        save_image(f_name + f"_envi_({row_min}_{row_max},{col_min}_{col_max})" +'.hdr', output, force=True, ext="raw")
     return output
 
 def read_rgb(filename, red=None, green=None, blue=None, save=False):
